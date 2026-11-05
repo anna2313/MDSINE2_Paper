@@ -7,7 +7,7 @@ excluded_subj=$1
 
 
 seed=$((excluded_subj * 100))
-inference_out_dir=$OUTPUT_DIR/mdsine2-modules-seed10/${excluded_subj}
+inference_out_dir=$OUTPUT_DIR/mdsine2-modules/${excluded_subj}
 mkdir -p ${inference_out_dir}
 echo "${inference_out_dir}"
 
