@@ -293,8 +293,19 @@ def evaluate_all(regression_inputs_dir: Path,
         heldout_data = HoldoutData(complete_study[sid], sidx)
 
         x0, u, t = Y[sidx][0], U[sidx], T[sidx]
-        fwsim = forward_sim_glv(data_path=pkl_path, recompute_cache=recompute_cache,
-                                x0=x0, u=u, t=t, scale=scale, rel_abund=use_rel_abund, init_limit_of_detection=1e5)
+        # PATCH: dispatch to the simulator that matches the model. The shipped code
+        # always used forward_sim_glv, which crashes for cLV (ALR parametrisation has
+        # n_taxa-1 dimensions) and silently mis-simulates LRA.
+        if model_name == "clv":
+            fwsim = forward_sim_clv(data_path=pkl_path, recompute_cache=recompute_cache,
+                                    x0=x0, u=u, t=t)
+        elif model_name == "lra":
+            fwsim = forward_sim_lra(data_path=pkl_path, recompute_cache=recompute_cache,
+                                    x0=x0, u=u, t=t)
+        else:
+            fwsim = forward_sim_glv(data_path=pkl_path, recompute_cache=recompute_cache,
+                                    x0=x0, u=u, t=t, scale=scale, rel_abund=use_rel_abund,
+                                    init_limit_of_detection=1e5)
 
         def add_results(_method: str, _res: pd.DataFrame):
             for _, row in _res.iterrows():
@@ -311,7 +322,7 @@ def evaluate_all(regression_inputs_dir: Path,
         # Absolute abundance
         if not use_rel_abund:
             try:
-                add_results('gLV (elastic net)', heldout_data.evaluate_absolute(fwsim))
+                add_results(model_name, heldout_data.evaluate_absolute(fwsim))
             except TimeoutError:
                 logger.error("Unable to finish forward simulation for glv-RA elastic-net (timeout)")
             except ValueError:
@@ -321,7 +332,7 @@ def evaluate_all(regression_inputs_dir: Path,
                 logger.error(f"Couldn't locate glv-RA-elastic net output (relabund): Holdout Subject {sid}.")
         else:
             try:
-                add_results('gLV-RA (elastic net)', heldout_data.evaluate_relative(fwsim))
+                add_results(model_name, heldout_data.evaluate_relative(fwsim))
             except TimeoutError:
                 logger.error("Unable to finish forward simulation for glv-RA elastic-net (timeout)")
             except ValueError:
